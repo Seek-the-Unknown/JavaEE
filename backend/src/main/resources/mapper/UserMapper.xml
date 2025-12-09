@@ -1,20 +1,24 @@
 <?xml version="1.0" encoding="UTF-8" ?>
-<!DOCTYPE mapper
-        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
-        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
 <mapper namespace="com.mapper.UserMapper">
 
     <select id="findByUsername" resultType="com.entity.User">
         SELECT * FROM t_user WHERE username = #{username}
     </select>
 
-    <insert id="insert" useGeneratedKeys="true" keyProperty="id">
-        INSERT INTO t_user (username, password, phone, email, is_admin)
-        VALUES (#{username}, #{password}, #{phone}, #{email}, #{isAdmin})
-    </insert>
-
     <select id="findById" resultType="com.entity.User">
         SELECT * FROM t_user WHERE id = #{id}
     </select>
+
+    <insert id="insert" useGeneratedKeys="true" keyProperty="id">
+        INSERT INTO t_user (username, password, phone, is_admin, balance)
+        VALUES (#{username}, #{password}, #{phone}, 0, 1000.00)
+    </insert>
+
+    <update id="update">
+        UPDATE t_user
+        SET phone = #{phone}, balance = #{balance}
+        WHERE id = #{id}
+    </update>
 
 </mapper>

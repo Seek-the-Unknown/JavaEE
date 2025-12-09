@@ -11,10 +11,13 @@ public class Venue {
     private String type;
     private String description;
     private Integer capacity;
-    private BigDecimal pricePerHour; // 使用BigDecimal处理金额，更精确
+    private BigDecimal pricePerHour;
     private String imageUrl;
     private Integer isActive;
+
+
+    private Integer ownerId;
+
+
     private LocalDateTime createTime;
 }
-
-

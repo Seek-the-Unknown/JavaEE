@@ -1,15 +1,14 @@
 package com.controller;
 
 import com.entity.User;
+import com.mapper.UserMapper;
 import com.service.UserService;
 import com.utils.Result;
+import jakarta.servlet.http.HttpServletRequest;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.RequestBody;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RestController;
-
-import java.util.Map;
+import org.springframework.web.bind.annotation.*;
+import org.springframework.web.context.request.RequestContextHolder;
+import org.springframework.web.context.request.ServletRequestAttributes;
 
 @RestController
 @RequestMapping("/api/users")
@@ -17,34 +16,29 @@ public class UserController {
 
     @Autowired
     private UserService userService;
+    @Autowired
+    private UserMapper userMapper;
 
-    // POST /api/users/register - 用户注册
-    @PostMapping("/register")
-    public Result<?> register(@RequestBody User user) {
-        try {
-            User registeredUser = userService.register(user);
-            // 注册成功后，不应该返回用户的密码等敏感信息
-            registeredUser.setPassword(null);
-            return Result.success("注册成功", registeredUser);
-        } catch (Exception e) {
-            return Result.error(400, e.getMessage());
-        }
+    @PostMapping("/login")
+    public Result<User> login(@RequestBody User user) {
+        User loggedUser = userService.login(user.getUsername(), user.getPassword());
+        return Result.success("登录成功", loggedUser);
     }
 
-    // POST /api/users/login - 用户登录
-    @PostMapping("/login")
-    public Result<User> login(@RequestBody Map<String, String> credentials) {
-        String username = credentials.get("username");
-        String password = credentials.get("password");
+    @PostMapping("/register")
+    public Result<User> register(@RequestBody User user) throws Exception {
+        User newUser = userService.register(user);
+        return Result.success("注册成功", newUser);
+    }
 
-        User user = userService.login(username, password);
-
-        if (user != null) {
-            // 登录成功，同样不返回密码
-            user.setPassword(null);
-            return Result.success("登录成功", user);
-        } else {
-            return Result.error(401, "用户名或密码错误");
-        }
+    // 新增：获取当前用户信息（含最新余额）
+    @GetMapping("/me")
+    public Result<User> getCurrentUser() {
+        HttpServletRequest req = ((ServletRequestAttributes) RequestContextHolder.currentRequestAttributes()).getRequest();
+        String uid = req.getHeader("userId");
+        if (uid == null) return Result.error(401, "未登录");
+        User user = userMapper.findById(Integer.parseInt(uid));
+        user.setPassword(null); // 不返回密码
+        return Result.success(user);
     }
 }

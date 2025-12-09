@@ -43,4 +43,6 @@ public interface VenueMapper {
      * @return 影响的行数
      */
     int deleteById(Integer id);
+
+    List<Venue> findByOwnerId(Integer ownerId);
 }

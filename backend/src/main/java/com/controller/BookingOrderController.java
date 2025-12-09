@@ -1,3 +1,5 @@
+// backend/src/main/java/com/controller/BookingOrderController.java
+
 package com.controller;
 
 import com.entity.BookingOrder;
@@ -21,26 +23,29 @@ public class BookingOrderController {
     @Autowired
     private BookingOrderService bookingOrderService;
 
-    // POST /api/orders - 创建新订单
+    // 单个预约 (保持不变)
     @PostMapping
     public Result<BookingOrder> createOrder(@RequestBody BookingOrder order) {
-        // 在实际项目中，userId 应该从当前登录的用户Session或Token中获取，而不是由前端传递
-        // 为了简化，我们暂时相信前端传递的userId
         BookingOrder newOrder = bookingOrderService.createBooking(order);
-        return Result.success("创建订单成功", newOrder);
+        return Result.success("预约成功", newOrder);
     }
 
-    // GET /api/orders/user/{userId} - 获取某个用户的所有订单
+    // ======== 新增：批量预约接口 ========
+    @Operation(summary = "批量创建订单")
+    @PostMapping("/batch")
+    public Result<List<BookingOrder>> createBatchOrders(@RequestBody List<BookingOrder> orders) {
+        List<BookingOrder> newOrders = bookingOrderService.createBatchBookings(orders);
+        return Result.success("批量预约成功", newOrders);
+    }
+
+    // 获取用户订单 (保持不变)
     @GetMapping("/user/{userId}")
     public Result<List<BookingOrder>> getOrdersByUserId(@PathVariable Integer userId) {
         List<BookingOrder> orders = bookingOrderService.listOrdersByUserId(userId);
         return Result.success("查询用户订单成功", orders);
     }
 
-    /**
-     * ======== 新增接口 ========
-     * 获取指定场馆在特定日期的已预约时间段
-     */
+    // 获取场馆占用情况 (保持不变)
     @Operation(summary = "获取场馆某日的预约时段")
     @GetMapping("/venue/{venueId}")
     public Result<List<BookingOrder>> getBookingsForDate(
@@ -50,10 +55,10 @@ public class BookingOrderController {
         return Result.success(bookings);
     }
 
+    // 取消订单 (保持不变)
     @Operation(summary = "用户取消自己的订单")
     @PutMapping("/{orderId}/cancel")
     public Result<?> cancelOrder(@PathVariable Integer orderId) {
-        // 同样，userId 应该从Token中解析，这里我们简化，从请求头获取
         HttpServletRequest request = ((ServletRequestAttributes) RequestContextHolder.currentRequestAttributes()).getRequest();
         String userIdStr = request.getHeader("userId");
         if (userIdStr == null) {
