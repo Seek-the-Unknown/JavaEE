@@ -1,194 +1,301 @@
 <template>
   <form @submit.prevent="handleSubmit" class="venue-form">
     <div class="form-group">
-      <label for="name">场馆名称 <span class="required">*</span></label>
+      <label class="form-label">场馆名称 <span class="req">*</span></label>
       <input
         type="text"
-        id="name"
         v-model="formData.name"
+        class="form-control"
+        placeholder="给场馆起个名字"
         required
-        placeholder="请输入场馆名称"
       />
     </div>
+
     <div class="form-group">
-      <label for="type">场馆类型 <span class="required">*</span></label>
-      <input
-        type="text"
-        id="type"
-        v-model="formData.type"
-        required
-        placeholder="例如: 篮球, 羽毛球"
-      />
+      <label class="form-label">场馆类型 <span class="req">*</span></label>
+      <div class="select-wrapper">
+        <select v-model="formData.type" class="form-control" required>
+          <option value="" disabled>请选择类型</option>
+          <option value="篮球">篮球</option>
+          <option value="足球">足球</option>
+          <option value="羽毛球">羽毛球</option>
+          <option value="网球">网球</option>
+          <option value="游泳">游泳</option>
+          <option value="健身房">健身房</option>
+          <option value="其他">其他</option>
+        </select>
+        <span class="select-arrow">▼</span>
+      </div>
     </div>
+
     <div class="form-row">
-      <div class="form-group">
-        <label for="price"
-          >每小时价格 (元) <span class="required">*</span></label
-        >
-        <div class="input-with-icon">
-          <span>¥</span>
+      <div class="form-col">
+        <label class="form-label">价格/小时 <span class="req">*</span></label>
+        <div class="input-group">
+          <div class="input-addon addon-left">¥</div>
           <input
             type="number"
-            id="price"
             v-model.number="formData.pricePerHour"
-            required
+            class="form-control has-addon-left"
+            placeholder="0.00"
             min="0"
+            required
           />
         </div>
       </div>
-      <div class="form-group">
-        <label for="capacity">容量 (人) <span class="required">*</span></label>
-        <div class="input-with-icon">
-          <i class="icon icon-users"></i>
+      <div class="form-col">
+        <label class="form-label">容纳人数 <span class="req">*</span></label>
+        <div class="input-group">
           <input
             type="number"
-            id="capacity"
             v-model.number="formData.capacity"
-            required
+            class="form-control has-addon-right"
+            placeholder="例如: 10"
             min="1"
+            required
           />
+          <div class="input-addon addon-right">人</div>
         </div>
       </div>
     </div>
+
     <div class="form-group">
-      <label for="description">描述</label>
+      <label class="form-label">场馆描述</label>
       <textarea
-        id="description"
         v-model="formData.description"
-        placeholder="请输入场馆详细信息..."
+        class="form-control textarea"
+        placeholder="请输入详细的场馆描述..."
+        rows="4"
       ></textarea>
     </div>
-    <p v-if="errorMessage" class="error-message">{{ errorMessage }}</p>
+
+    <div v-if="errorMessage" class="error-msg">
+      {{ errorMessage }}
+    </div>
+
     <div class="form-actions">
-      <button type="submit" class="submit-btn" :disabled="isLoading">
-        {{ isLoading ? "提交中..." : "确认提交" }}
+      <button type="button" class="btn btn-secondary" @click="resetForm">
+        重置
       </button>
-      <button type="button" class="reset-btn" @click="resetForm">
-        重置表单
+      <button type="submit" class="btn btn-primary" :disabled="isLoading">
+        {{ isLoading ? "提交中..." : "保存场馆" }}
       </button>
     </div>
   </form>
 </template>
 
 <script setup>
-// ... <script setup> 部分保持不变 ...
 import { reactive, watch, defineProps, defineEmits } from "vue";
+
 const props = defineProps({
   initialData: { type: Object, default: () => ({}) },
   isLoading: Boolean,
   errorMessage: String,
 });
+
 const emit = defineEmits(["submit"]);
+
 const formData = reactive({
   name: "",
   type: "",
-  pricePerHour: 0,
-  capacity: 0,
+  pricePerHour: "",
+  capacity: "",
   description: "",
 });
+
 const initialFormState = { ...formData };
+
 watch(
   () => props.initialData,
   (newData) => {
-    if (newData) {
-      Object.assign(formData, newData);
-    }
+    if (newData) Object.assign(formData, newData);
   },
   { immediate: true, deep: true }
 );
+
 const handleSubmit = () => {
   emit("submit", { ...formData });
 };
+
 const resetForm = () => {
   Object.assign(formData, props.initialData || initialFormState);
 };
 </script>
 
 <style scoped>
-@import url("@/assets/icons.css");
-.icon-upload {
-  mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='currentColor' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4'%3E%3C/path%3E%3Cpolyline points='17 8 12 3 7 8'%3E%3C/polyline%3E%3Cline x1='12' y1='3' x2='12' y2='15'%3E%3C/line%3E%3C/svg%3E");
+/* 样式变量直接使用，防止外部CSS加载失败 */
+.venue-form {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  width: 100%;
 }
 
-.page-header {
+.form-group {
   display: flex;
-  justify-content: space-between;
-  align-items: flex-start;
-  margin-bottom: 32px;
+  flex-direction: column;
+  gap: 6px;
 }
-.page-subtitle {
-  color: var(--color-text-secondary);
-  margin-top: 8px;
-}
-.back-link {
-  color: var(--color-primary-text);
-  text-decoration: none;
-  font-weight: 500;
-}
-.content-grid {
-  display: grid;
-  grid-template-columns: 320px 1fr;
-  align-items: start;
-  gap: 32px;
-}
-.card {
-  background: #fff;
-  padding: 24px;
-  border-radius: 12px;
-  border: 1px solid var(--color-border);
-}
-.card-title {
-  font-size: 16px;
-  font-weight: 600;
-  margin: 0 0 24px;
-}
-.image-uploader {
-  aspect-ratio: 1 / 1;
-  border: 2px dashed var(--color-border);
-  border-radius: 12px;
+
+.form-row {
   display: flex;
-  justify-content: center;
-  align-items: center;
-  cursor: pointer;
-  overflow: hidden;
-  transition: border-color 0.3s;
-  background-color: var(--color-bg-main);
+  gap: 20px;
 }
-.image-uploader:hover {
-  border-color: var(--color-primary-text);
+.form-col {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
 }
-.preview-image {
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-}
-.upload-placeholder {
-  text-align: center;
-}
-.upload-icon-wrapper {
-  width: 48px;
-  height: 48px;
-  border-radius: 50%;
-  background-color: #f0eefc;
-  color: var(--color-primary-text);
-  display: inline-flex;
-  justify-content: center;
-  align-items: center;
-  margin-bottom: 12px;
-  border: 4px solid #fff;
-}
-.upload-text {
-  font-weight: 500;
-  margin: 0 0 4px;
-}
-.upload-hint {
-  font-size: 12px;
-  color: var(--color-text-secondary);
-  margin: 0;
-}
-.upload-status {
-  margin-top: 10px;
-  color: var(--color-text-secondary);
+
+.form-label {
   font-size: 14px;
+  font-weight: 500;
+  color: #344054; /* 深灰色 */
+}
+.req {
+  color: #ef4444;
+  margin-left: 2px;
+}
+
+/* --- 核心：统一输入框样式 --- */
+.form-control {
+  width: 100%;
+  height: 40px; /* 强制统一高度 */
+  padding: 0 12px;
+  font-size: 14px;
+  color: #101828;
+  background: #fff;
+  border: 1px solid #d0d5dd;
+  border-radius: 8px;
+  box-shadow: 0 1px 2px rgba(16, 24, 40, 0.05);
+  transition: all 0.2s ease;
+  box-sizing: border-box; /* 确保padding不影响宽度 */
+  appearance: none; /* 移除浏览器默认样式 */
+}
+
+/* 聚焦状态 - 紫色光晕 */
+.form-control:focus {
+  outline: none;
+  border-color: var(--color-primary-start); /* 使用紫色变量 */
+  box-shadow: 0 0 0 4px #f4ebff; /* 紫色光环 */
+}
+
+/* 文本域特殊高度 */
+.textarea {
+  height: auto;
+  min-height: 120px;
+  padding: 12px;
+  resize: vertical;
+}
+
+/* --- 输入框组 (¥ 和 人) --- */
+.input-group {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+.input-addon {
+  position: absolute;
+  top: 1px; /* 微调 */
+  bottom: 1px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #667085;
+  font-size: 14px;
+  background: transparent;
+  pointer-events: none;
+  z-index: 10;
+}
+.addon-left {
+  left: 1px;
+  width: 36px;
+  border-right: 1px solid #d0d5dd;
+  border-radius: 8px 0 0 8px;
+  background: #f9fafb;
+}
+.addon-right {
+  right: 1px;
+  width: 36px;
+  border-left: 1px solid #d0d5dd;
+  border-radius: 0 8px 8px 0;
+  background: #f9fafb;
+}
+
+/* 为带前缀后缀的输入框留出padding */
+.has-addon-left {
+  padding-left: 48px;
+}
+.has-addon-right {
+  padding-right: 48px;
+}
+
+/* --- 下拉框优化 --- */
+.select-wrapper {
+  position: relative;
+}
+.select-arrow {
+  position: absolute;
+  right: 12px;
+  top: 50%;
+  transform: translateY(-50%);
+  font-size: 10px;
+  color: #667085;
+  pointer-events: none;
+}
+
+/* --- 按钮样式 --- */
+.form-actions {
+  margin-top: 12px;
+  display: flex;
+  justify-content: flex-end;
+  gap: 12px;
+  padding-top: 20px;
+  border-top: 1px solid #eaecf0;
+}
+
+.btn {
+  height: 40px; /* 按钮高度与输入框严格一致 */
+  padding: 0 18px;
+  border-radius: 8px;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  border: none;
+  transition: all 0.2s;
+}
+
+.btn-secondary {
+  background: #fff;
+  border: 1px solid #d0d5dd;
+  color: #344054;
+}
+.btn-secondary:hover {
+  background: #f9fafb;
+  border-color: #b2b8c2;
+}
+
+.btn-primary {
+  background: var(--gradient-primary); /* 使用渐变 */
+  color: #fff;
+  box-shadow: 0 1px 2px rgba(16, 24, 40, 0.05);
+}
+.btn-primary:hover {
+  opacity: 0.9;
+  box-shadow: 0 4px 12px rgba(127, 86, 217, 0.25); /* 强化紫色阴影 */
+}
+.btn-primary:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.error-msg {
+  color: #b91c1c;
+  font-size: 14px;
+  background: #fef2f2;
+  padding: 10px;
+  border-radius: 6px;
 }
 </style>

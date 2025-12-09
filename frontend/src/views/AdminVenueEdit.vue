@@ -1,57 +1,71 @@
 <template>
   <div class="admin-edit-page">
-    <header class="page-header">
-      <div>
-        <h1 class="page-title">{{ isEditMode ? "编辑场馆" : "新增场馆" }}</h1>
-        <p class="page-subtitle">填写场馆信息并上传图片</p>
-      </div>
-      <router-link to="/venues" class="back-link">返回列表 &rarr;</router-link>
-    </header>
-
-    <div class="content-grid">
-      <!-- 左侧图片上传 -->
-      <div class="card">
-        <h2 class="card-title">场馆图片</h2>
-        <div class="image-uploader" @click="triggerFileUpload">
-          <img
-            v-if="imagePreview"
-            :src="imagePreview"
-            alt="场馆预览"
-            class="preview-image"
-          />
-          <div v-else class="upload-placeholder">
-            <div class="upload-icon-wrapper">
-              <i class="icon icon-upload"></i>
-            </div>
-            <p class="upload-text">点击上传图片</p>
-            <p class="upload-hint">支持 JPG, PNG 格式</p>
-          </div>
-          <input
-            type="file"
-            ref="fileInput"
-            @change="handleFileChange"
-            accept="image/*"
-            style="display: none"
-          />
+    <div class="page-container">
+      <header class="page-header">
+        <div class="header-left">
+          <h1 class="page-title">{{ isEditMode ? "编辑场馆" : "新增场馆" }}</h1>
+          <p class="page-subtitle">请完善以下信息，带 * 为必填项</p>
         </div>
-        <div v-if="isUploading" class="upload-status">图片上传中...</div>
-      </div>
+        <button class="back-btn" @click="router.push('/venues')">
+          <span class="arrow">←</span> 返回列表
+        </button>
+      </header>
 
-      <!-- 右侧表单 -->
-      <div class="card">
-        <VenueForm
-          :initial-data="venueData"
-          :is-loading="isLoading"
-          :error-message="errorMessage"
-          @submit="saveVenue"
-        />
+      <div class="main-card">
+        <div class="card-body">
+          <div class="upload-section">
+            <div
+              class="image-uploader"
+              :class="{ 'has-image': imagePreview, 'is-loading': isUploading }"
+              @click="triggerFileUpload"
+            >
+              <img
+                v-if="imagePreview"
+                :src="imagePreview"
+                alt="预览"
+                class="preview-img"
+              />
+              <div v-else class="upload-placeholder">
+                <div class="icon-circle">
+                  <i class="plus-icon">+</i>
+                </div>
+                <span class="upload-tip">点击上传封面</span>
+                <span class="upload-subtip">支持 JPG, PNG</span>
+              </div>
+
+              <div class="upload-mask" v-if="imagePreview">
+                <span>更换图片</span>
+              </div>
+
+              <div class="loading-mask" v-if="isUploading">
+                <div class="spinner"></div>
+              </div>
+
+              <input
+                type="file"
+                ref="fileInput"
+                @change="handleFileChange"
+                accept="image/*"
+                hidden
+              />
+            </div>
+          </div>
+
+          <div class="form-section">
+            <VenueForm
+              :initial-data="venueData"
+              :is-loading="isLoading"
+              :error-message="errorMessage"
+              @submit="saveVenue"
+            />
+          </div>
+        </div>
       </div>
     </div>
   </div>
 </template>
 
 <script setup>
-// ... <script setup> 部分保持不变 ...
 import { ref, onMounted, computed } from "vue";
 import { useRoute, useRouter } from "vue-router";
 import VenueForm from "@/components/VenueForm.vue";
@@ -76,22 +90,23 @@ const isEditMode = computed(() => !!route.params.id);
 const venueId = computed(() => route.params.id);
 
 const triggerFileUpload = () => {
+  if (isUploading.value) return;
   fileInput.value.click();
 };
+
 const handleFileChange = async (event) => {
   const file = event.target.files[0];
   if (!file) return;
+
   const reader = new FileReader();
-  reader.onload = (e) => {
-    imagePreview.value = e.target.result;
-  };
+  reader.onload = (e) => (imagePreview.value = e.target.result);
   reader.readAsDataURL(file);
 
   isUploading.value = true;
   try {
     venueData.value.imageUrl = await uploadImage(file);
   } catch (error) {
-    errorMessage.value = "图片上传失败: " + error.message;
+    alert("上传失败: " + error.message);
   } finally {
     isUploading.value = false;
   }
@@ -105,14 +120,12 @@ const saveVenue = async (formData) => {
   try {
     if (isEditMode.value) {
       await updateVenue(venueId.value, finalData);
-      alert("场馆更新成功！");
     } else {
       await createVenue(finalData);
-      alert("场馆新增成功！");
     }
     router.push("/venues");
   } catch (error) {
-    errorMessage.value = error.message || "操作失败";
+    errorMessage.value = error.message;
   } finally {
     isLoading.value = false;
   }
@@ -124,11 +137,9 @@ onMounted(async () => {
     try {
       const data = await getVenueById(venueId.value);
       venueData.value = data;
-      if (data.imageUrl) {
-        imagePreview.value = data.imageUrl;
-      }
+      if (data.imageUrl) imagePreview.value = data.imageUrl;
     } catch (error) {
-      errorMessage.value = "加载场馆数据失败";
+      errorMessage.value = "加载失败";
     } finally {
       isLoading.value = false;
     }
@@ -137,89 +148,189 @@ onMounted(async () => {
 </script>
 
 <style scoped>
-@import url("@/assets/icons.css");
-.icon-upload {
-  mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='currentColor' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4'%3E%3C/path%3E%3Cpolyline points='17 8 12 3 7 8'%3E%3C/polyline%3E%3Cline x1='12' y1='3' x2='12' y2='15'%3E%3C/line%3E%3C/svg%3E");
+.admin-edit-page {
+  background-color: var(--color-bg-main);
+  min-height: calc(100vh - 72px);
+  padding: 40px 0;
 }
 
+.page-container {
+  max-width: 960px;
+  margin: 0 auto;
+  padding: 0 24px;
+}
+
+/* Header */
 .page-header {
   display: flex;
   justify-content: space-between;
-  align-items: flex-start;
-  margin-bottom: 32px;
+  align-items: center;
+  margin-bottom: 24px;
+}
+.page-title {
+  font-size: 24px;
+  font-weight: 600;
+  color: #101828;
+  margin: 0 0 4px;
 }
 .page-subtitle {
-  color: var(--color-text-secondary);
-  margin-top: 8px;
+  color: #667085;
+  font-size: 14px;
+  margin: 0;
 }
-.back-link {
-  color: var(--color-primary);
-  text-decoration: none;
+.back-btn {
+  height: 40px;
+  padding: 0 16px;
+  background: #fff;
+  border: 1px solid #d0d5dd;
+  border-radius: 8px;
+  color: #344054;
   font-weight: 500;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  transition: all 0.2s;
+}
+.back-btn:hover {
+  background: #f9fafb;
+  border-color: #b2b8c2;
 }
 
-.content-grid {
-  display: grid;
-  grid-template-columns: 320px 1fr;
-  gap: 32px;
-}
-.card {
+/* Main Card */
+.main-card {
   background: #fff;
-  padding: 24px;
-  border-radius: var(--border-radius-lg);
-  border: 1px solid var(--color-border);
+  border: 1px solid #eaecf0;
+  border-radius: 12px;
+  box-shadow: 0 1px 3px rgba(16, 24, 40, 0.05);
+  overflow: hidden;
 }
-.card-title {
-  font-size: 16px;
-  font-weight: 600;
-  margin: 0 0 16px;
+.card-body {
+  display: flex;
+  flex-direction: row;
+}
+
+/* Left: Image Uploader */
+.upload-section {
+  width: 320px;
+  background-color: #f9fafb;
+  border-right: 1px solid #eaecf0;
+  padding: 32px;
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
 }
 
 .image-uploader {
-  aspect-ratio: 1 / 1;
-  border: 2px dashed var(--color-border);
-  border-radius: var(--border-radius-lg);
-  display: flex;
-  justify-content: center;
-  align-items: center;
+  width: 100%;
+  aspect-ratio: 1;
+  background: #fff; /* 默认白色背景 */
+  border: 1px dashed #eaecf0;
+  border-radius: 12px;
   cursor: pointer;
+  position: relative;
   overflow: hidden;
-  transition: border-color 0.3s;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s;
 }
 .image-uploader:hover {
-  border-color: var(--color-primary);
+  border-color: var(--color-primary-start);
+  background: #f4ebff; /* 悬停时变淡紫色 */
 }
-.preview-image {
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-}
+
 .upload-placeholder {
   text-align: center;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
 }
-.upload-icon-wrapper {
+.icon-circle {
   width: 48px;
   height: 48px;
   border-radius: 50%;
-  background: #f8fafc;
-  color: var(--color-primary);
-  display: inline-flex;
-  justify-content: center;
+  background: #f4ebff;
+  color: var(--color-primary-start);
+  display: flex;
   align-items: center;
+  justify-content: center;
   margin-bottom: 12px;
 }
-.upload-text {
-  font-weight: 500;
-  margin: 0 0 4px;
+.plus-icon {
+  font-style: normal;
+  font-size: 24px;
+  line-height: 1;
 }
-.upload-hint {
-  font-size: 12px;
-  color: var(--color-text-secondary);
-  margin: 0;
-}
-.upload-status {
-  margin-top: 10px;
-  color: var(--color-text-secondary);
+.upload-tip {
   font-size: 14px;
+  font-weight: 600;
+  color: var(--color-primary-text);
+  margin-bottom: 4px;
+}
+.upload-subtip {
+  font-size: 12px;
+  color: #667085;
+}
+
+/* --- 核心修改：让图片完整显示 --- */
+.preview-img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain; /* 完整显示，不裁剪 */
+  padding: 4px; /* 防止图片紧贴边缘 */
+  background-color: #f9fafb; /* 给图片底部加一个浅灰背景，防止透明图片看不清 */
+}
+/* -------------------------------- */
+
+.upload-mask {
+  position: absolute;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #fff;
+  font-weight: 500;
+  opacity: 0;
+  transition: opacity 0.2s;
+}
+.image-uploader:hover .upload-mask {
+  opacity: 1;
+}
+
+/* Spinner */
+.spinner {
+  width: 24px;
+  height: 24px;
+  border: 3px solid #e2e8f0;
+  border-top-color: var(--color-primary-start);
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+}
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+/* Right: Form */
+.form-section {
+  flex: 1;
+  padding: 32px;
+}
+
+@media (max-width: 800px) {
+  .card-body {
+    flex-direction: column;
+  }
+  .upload-section {
+    width: 100%;
+    border-right: none;
+    border-bottom: 1px solid #eaecf0;
+  }
+  .image-uploader {
+    width: 200px;
+  }
 }
 </style>

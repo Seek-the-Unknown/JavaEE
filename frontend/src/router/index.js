@@ -3,8 +3,9 @@ import VenueListView from "../views/VenueListView.vue";
 import LoginRegisterView from "../views/LoginRegisterView.vue";
 import VenueDetailView from "../views/VenueDetailView.vue";
 import MyOrdersView from "../views/MyOrdersView.vue";
-// ======== 修复：导入 AdminVenueEdit 组件 ========
 import AdminVenueEdit from "../views/AdminVenueEdit.vue";
+import UserProfileView from "../views/UserProfileView.vue";
+import MyPublishedVenues from "../views/MyPublishedVenues.vue";
 
 const routes = [
   { path: "/", redirect: "/venues" },
@@ -16,29 +17,39 @@ const routes = [
     props: true,
   },
   { path: "/login", name: "LoginRegister", component: LoginRegisterView },
+
+  // 需登录路由
   {
     path: "/my-orders",
     name: "MyOrders",
     component: MyOrdersView,
-    meta: { requiresAuth: true }, // 添加元信息，表示此路由需要登录
+    meta: { requiresAuth: true },
   },
   {
-    path: "/about",
-    name: "about",
-    component: () => import("../views/AboutView.vue"),
+    path: "/profile",
+    name: "UserProfile",
+    component: UserProfileView,
+    meta: { requiresAuth: true },
   },
-  // ======== 新增后台路由 ========
   {
-    path: "/admin/venue/new",
-    name: "AdminVenueNew",
+    path: "/my-published",
+    name: "MyPublished",
+    component: MyPublishedVenues,
+    meta: { requiresAuth: true },
+  },
+
+  // 发布与编辑 (权限由后端和组件内控制)
+  {
+    path: "/venue/new",
+    name: "VenueNew",
     component: AdminVenueEdit,
-    meta: { requiresAuth: true, requiresAdmin: true }, // 需要登录且是管理员
+    meta: { requiresAuth: true },
   },
   {
     path: "/admin/venue/edit/:id",
-    name: "AdminVenueEdit",
+    name: "VenueEdit",
     component: AdminVenueEdit,
-    meta: { requiresAuth: true, requiresAdmin: true }, // 需要登录且是管理员
+    meta: { requiresAuth: true },
   },
 ];
 
@@ -47,27 +58,9 @@ const router = createRouter({
   routes,
 });
 
-// 全局前置守卫 (Navigation Guard)
 router.beforeEach((to, from, next) => {
   const userInfo = JSON.parse(localStorage.getItem("userInfo"));
-  const loggedIn = !!userInfo;
-  const isAdmin = loggedIn && userInfo.isAdmin === 1;
-
-  if (to.matched.some((record) => record.meta.requiresAdmin)) {
-    // 如果目标路由需要管理员权限
-    if (isAdmin) {
-      next(); // 是管理员，放行
-    } else if (loggedIn) {
-      alert("权限不足！");
-      next("/venues"); // 已登录但不是管理员，跳回首页
-    } else {
-      next("/login"); // 未登录，去登录
-    }
-  } else if (
-    to.matched.some((record) => record.meta.requiresAuth) &&
-    !loggedIn
-  ) {
-    // 如果目标路由需要登录，但未登录
+  if (to.meta.requiresAuth && !userInfo) {
     next("/login");
   } else {
     next();

@@ -1,181 +1,223 @@
 <template>
   <div class="detail-page">
-    <div v-if="loading">加载中...</div>
-    <div v-if="venue">
+    <div v-if="loading" class="loading-state">加载中...</div>
+    <div v-else-if="venue" class="content-wrapper">
       <div class="venue-header">
         <div
           class="header-image"
           :style="{
             backgroundImage: `url(${
               venue.imageUrl ||
-              `https://picsum.photos/seed/${venue.id}/1200/400`
+              `https://picsum.photos/seed/${venue.id}/1200/600`
             })`,
           }"
-        ></div>
-        <div class="header-content">
-          <span class="type-tag">{{ venue.type }}</span>
-          <h1 class="page-title">{{ venue.name }}</h1>
-          <p>{{ venue.description }}</p>
+        >
+          <div class="header-overlay">
+            <span class="type-badge">{{ venue.type }}</span>
+            <h1 class="venue-title">{{ venue.name }}</h1>
+            <p class="venue-desc">{{ venue.description }}</p>
+          </div>
         </div>
       </div>
 
-      <div class="booking-container">
-        <div class="info-cards">
+      <div class="main-grid">
+        <div class="info-section">
           <div class="info-card">
-            <span>价格</span><strong>¥{{ venue.pricePerHour }}/小时</strong>
-          </div>
-          <div class="info-card">
-            <span>容量</span><strong>{{ venue.capacity }} 人</strong>
+            <h3 class="card-title">场馆详情</h3>
+            <ul class="detail-list">
+              <li>
+                <span class="label">价格</span
+                ><span class="value price"
+                  >¥{{ venue.pricePerHour }} / 小时</span
+                >
+              </li>
+              <li>
+                <span class="label">容量</span
+                ><span class="value">{{ venue.capacity }} 人</span>
+              </li>
+            </ul>
           </div>
         </div>
 
-        <div class="booking-panel">
-          <h3>立即预约</h3>
-          <div v-if="isLoggedIn">
-            <div class="form-group">
-              <label>选择日期</label>
-              <input type="date" v-model="selectedDate" />
-            </div>
-            <label>选择时段 (每小时)</label>
-            <div class="time-slots-grid">
-              <div
-                v-for="slot in timeSlots"
-                :key="slot.time"
-                class="time-slot"
-                :class="{
-                  booked: slot.isBooked,
-                  selected: selectedSlot === slot.time,
-                }"
-                @click="selectSlot(slot)"
-              >
-                {{ slot.time }}
+        <div class="booking-section">
+          <div class="booking-card sticky-card">
+            <h3 class="card-title">预约时段 (可多选)</h3>
+            <div v-if="isLoggedIn">
+              <div class="date-picker-wrapper">
+                <label>日期</label>
+                <input
+                  type="date"
+                  v-model="selectedDate"
+                  :min="todayDate"
+                  class="date-input"
+                />
               </div>
+
+              <div class="slots-grid">
+                <button
+                  v-for="slot in timeSlots"
+                  :key="slot.time"
+                  class="time-slot-btn"
+                  :class="{
+                    'is-booked': slot.isBooked,
+                    'is-selected': selectedSlots.has(slot.time),
+                  }"
+                  :disabled="slot.isBooked"
+                  @click="toggleSlot(slot)"
+                >
+                  {{ slot.time }}
+                </button>
+              </div>
+
+              <div class="booking-summary" v-if="selectedSlots.size > 0">
+                <p>
+                  已选: <strong>{{ selectedSlots.size }} 个时段</strong>
+                </p>
+                <p>
+                  总计: <strong class="total-price">¥{{ totalPrice }}</strong>
+                </p>
+                <p :class="['balance-text', { 'no-balance': !canAfford }]">
+                  当前余额: ¥{{ userState.userInfo.balance || 0 }}
+                  <span v-if="!canAfford">(余额不足)</span>
+                </p>
+              </div>
+
+              <button
+                @click="handleBatchBooking"
+                class="confirm-btn"
+                :disabled="selectedSlots.size === 0 || isBooking"
+              >
+                {{ isBooking ? "提交中..." : "确认预约" }}
+              </button>
+
+              <p
+                v-if="bookingMessage"
+                :class="['message', isError ? 'error' : 'success']"
+              >
+                {{ bookingMessage }}
+              </p>
             </div>
-            <p
-              v-if="bookingMessage"
-              :class="isError ? 'error-text' : 'success-text'"
-            >
-              {{ bookingMessage }}
-            </p>
-            <button
-              @click="handleBooking"
-              class="book-btn"
-              :disabled="!selectedSlot || isBooking"
-            >
-              {{ isBooking ? "处理中..." : `确认预约 ${selectedSlot || ""}` }}
-            </button>
-          </div>
-          <div v-else class="login-prompt">
-            <p>请先登录以查看可预约时段并进行预约。</p>
-            <router-link to="/login" class="book-btn">前往登录</router-link>
+            <div v-else class="login-mask">
+              <p>登录后即可预约</p>
+              <router-link to="/login" class="login-link-btn"
+                >去登录</router-link
+              >
+            </div>
           </div>
         </div>
       </div>
     </div>
+    <div v-else class="not-found">场馆未找到</div>
   </div>
 </template>
 
 <script setup>
-// ==================== 问题修复：移除了未使用的 reactive 和 useRouter ====================
-import { ref, onMounted, computed, watch, defineProps } from "vue";
+import { ref, onMounted, computed, watch } from "vue";
 import { getVenueById } from "@/api/venue";
-import { createOrder, getBookedSlots } from "@/api/order";
+import { createBatchOrders, getBookedSlots } from "@/api/order";
 import { useUserStore } from "@/store/user";
-// ===================================================================================
 
+// defineProps 自动可用，无需导入
+// eslint-disable-next-line no-undef
 const props = defineProps({ id: { type: [String, Number], required: true } });
-const { userState, isLoggedIn } = useUserStore();
+const { userState, isLoggedIn, fetchUserInfo } = useUserStore();
 
 const venue = ref(null);
 const loading = ref(true);
 const isBooking = ref(false);
 const bookingMessage = ref("");
 const isError = ref(false);
-
-const selectedDate = ref(new Date().toISOString().split("T")[0]);
+const todayDate = new Date().toISOString().split("T")[0];
+const selectedDate = ref(todayDate);
 const bookedSlots = ref([]);
-const selectedSlot = ref(null);
+const selectedSlots = ref(new Set());
 
-// 生成一天的时间段 (9:00 - 21:00)
+const canAfford = computed(() => {
+  if (!isLoggedIn.value || !venue.value) return true;
+  const balance = parseFloat(userState.userInfo.balance || 0);
+  return balance >= totalPrice.value;
+});
+
 const timeSlots = computed(() => {
   const slots = [];
-  for (let i = 9; i < 22; i++) {
-    const time = `${String(i).padStart(2, "0")}:00`;
-    // 检查这个时间段是否已被预订
-    const isBooked = bookedSlots.value.some((booking) => {
-      const startTime = booking.startTime.substring(0, 5); // '09:00:00' -> '09:00'
-      return startTime === time;
-    });
-    slots.push({ time, isBooked });
+  for (let i = 9; i < 21; i++) {
+    const timeDisplay = `${String(i).padStart(2, "0")}:00`;
+    const isBooked = (bookedSlots.value || []).some(
+      (b) => b.startTime && b.startTime.substring(0, 5) === timeDisplay
+    );
+    slots.push({ time: timeDisplay, isBooked });
   }
   return slots;
 });
 
-// 获取某日已预订时段
+const totalPrice = computed(() => {
+  if (!venue.value) return 0;
+  return venue.value.pricePerHour * selectedSlots.value.size;
+});
+
+const getEndTime = (t) =>
+  `${String(parseInt(t.split(":")[0]) + 1).padStart(2, "0")}:00`;
+
 const fetchBookedSlots = async (date) => {
-  if (!isLoggedIn.value) return;
   try {
     const data = await getBookedSlots(props.id, date);
-    bookedSlots.value = data;
-    selectedSlot.value = null; // 日期改变后清空选择
-  } catch (error) {
-    console.error("获取已预约时段失败:", error);
+    bookedSlots.value = data || [];
+    selectedSlots.value.clear();
+    bookingMessage.value = "";
+  } catch (e) {
+    console.error(e);
   }
 };
 
-// 监听日期变化，重新获取数据
-watch(selectedDate, (newDate) => {
-  fetchBookedSlots(newDate);
-});
+watch(selectedDate, fetchBookedSlots);
 
-// 点击选择时间段
-const selectSlot = (slot) => {
-  if (slot.isBooked) return; // 已被预订的不能选
-  selectedSlot.value = slot.time;
+const toggleSlot = (slot) => {
+  if (slot.isBooked) return;
+  if (selectedSlots.value.has(slot.time)) selectedSlots.value.delete(slot.time);
+  else selectedSlots.value.add(slot.time);
+  bookingMessage.value = "";
 };
 
-const handleBooking = async () => {
-  if (!selectedSlot.value) {
-    alert("请先选择一个预约时间段！");
+const handleBatchBooking = async () => {
+  if (selectedSlots.value.size === 0) return;
+  if (!canAfford.value) {
+    alert("余额不足，请去个人中心充值！");
     return;
   }
   isBooking.value = true;
   bookingMessage.value = "";
 
   try {
-    const startTime = selectedSlot.value;
-    const endTime = `${(parseInt(startTime.split(":")[0]) + 1)
-      .toString()
-      .padStart(2, "0")}:00`;
-
-    await createOrder({
+    const orders = Array.from(selectedSlots.value).map((startTime) => ({
       userId: userState.userInfo.id,
       venueId: venue.value.id,
       bookingDate: selectedDate.value,
-      startTime,
-      endTime,
-    });
+      startTime: `${startTime}:00`,
+      endTime: `${getEndTime(startTime)}:00`,
+    }));
 
+    await createBatchOrders(orders);
     isError.value = false;
-    bookingMessage.value = "恭喜，预约成功！";
-    alert('预约成功！您可以在"我的订单"页面查看。');
-    // 预约成功后刷新当前页的预订状态
-    fetchBookedSlots(selectedDate.value);
+    bookingMessage.value = "预约成功！";
+    alert(`预约成功！消费 ¥${totalPrice.value}`);
+
+    await fetchUserInfo();
+    await fetchBookedSlots(selectedDate.value);
   } catch (error) {
     isError.value = true;
-    bookingMessage.value = error.message || "预约失败，请稍后再试。";
+    bookingMessage.value = error.message || "预约失败";
   } finally {
     isBooking.value = false;
   }
 };
 
 onMounted(async () => {
+  loading.value = true;
   try {
-    loading.value = true;
     venue.value = await getVenueById(props.id);
-    await fetchBookedSlots(selectedDate.value); // 初始加载当天的预订
-  } catch (error) {
-    console.error("获取场馆详情失败:", error);
+    await fetchBookedSlots(selectedDate.value);
+  } catch (e) {
+    console.error(e);
   } finally {
     loading.value = false;
   }
@@ -183,134 +225,157 @@ onMounted(async () => {
 </script>
 
 <style scoped>
+/* 样式复用之前，增加余额相关样式 */
+.detail-page {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 24px;
+}
 .venue-header {
-  position: relative;
-  border-radius: var(--border-radius);
+  border-radius: 16px;
   overflow: hidden;
   margin-bottom: 32px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
 }
 .header-image {
-  height: 300px;
+  height: 320px;
   background-size: cover;
   background-position: center;
+  position: relative;
 }
-.header-content {
+.header-overlay {
   position: absolute;
-  bottom: 0;
-  left: 0;
-  right: 0;
-  padding: 60px 32px 32px;
-  background: linear-gradient(to top, rgba(0, 0, 0, 0.7), transparent);
+  inset: 0;
+  background: linear-gradient(to top, rgba(0, 0, 0, 0.8), transparent);
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-end;
+  padding: 32px;
   color: white;
 }
-.header-content .page-title {
-  margin: 8px 0;
+.type-badge {
+  background: #7f56d9;
   color: white;
+  padding: 4px 12px;
+  border-radius: 20px;
+  font-size: 12px;
+  align-self: flex-start;
+  margin-bottom: 12px;
 }
-.header-content p {
-  margin: 0;
+.venue-title {
+  font-size: 32px;
+  margin: 0 0 8px 0;
+}
+.venue-desc {
   opacity: 0.9;
+  max-width: 600px;
 }
-
-.booking-container {
+.main-grid {
   display: grid;
-  grid-template-columns: 1fr 350px;
+  grid-template-columns: 1fr 380px;
   gap: 32px;
 }
-.info-cards {
-  background: var(--card-bg);
-  padding: 32px;
-  border-radius: var(--border-radius);
-  box-shadow: 0 4px 6px -1px var(--shadow-color);
-  align-self: flex-start; /* 关键，让它不拉伸 */
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 20px;
+.info-card,
+.booking-card {
+  background: white;
+  border-radius: 12px;
+  padding: 24px;
+  border: 1px solid #eaecf0;
 }
-.info-card span {
-  display: block;
-  color: var(--text-secondary);
-  margin-bottom: 8px;
+.detail-list {
+  list-style: none;
+  padding: 0;
 }
-.info-card strong {
-  font-size: 20px;
-  font-weight: 600;
+.detail-list li {
+  display: flex;
+  justify-content: space-between;
+  padding: 12px 0;
+  border-bottom: 1px dashed #eee;
 }
-
-.booking-panel {
-  background: var(--card-bg);
-  padding: 32px;
-  border-radius: var(--border-radius);
-  box-shadow: 0 4px 6px -1px var(--shadow-color);
+.price {
+  color: #7f56d9;
+  font-weight: 700;
+  font-size: 18px;
 }
-.booking-panel h3 {
-  margin: 0 0 24px;
-  font-size: 20px;
-}
-.form-group {
-  margin-bottom: 16px;
-}
-.form-group label,
-.booking-panel > label {
-  display: block;
-  margin-bottom: 8px;
-  font-weight: 500;
-  font-size: 14px;
-}
-.form-group input {
-  width: 100%;
-  padding: 10px;
-  border: 1px solid var(--border-color);
-  border-radius: 6px;
-  box-sizing: border-box;
-}
-
-.time-slots-grid {
+.slots-grid {
   display: grid;
   grid-template-columns: repeat(4, 1fr);
-  gap: 8px;
+  gap: 10px;
   margin-bottom: 24px;
 }
-.time-slot {
-  padding: 8px;
-  border: 1px solid var(--border-color);
+.time-slot-btn {
+  padding: 8px 0;
+  border: 1px solid #ddd;
+  background: white;
   border-radius: 6px;
-  text-align: center;
   cursor: pointer;
+  transition: all 0.2s;
+  font-size: 13px;
 }
-.time-slot.booked {
-  background: #f1f5f9;
-  color: #94a3b8;
+.time-slot-btn:hover:not(:disabled) {
+  border-color: #7f56d9;
+  color: #7f56d9;
+}
+.time-slot-btn.is-booked {
+  background: #f3f4f6;
+  color: #bbb;
+  border-color: #eee;
   cursor: not-allowed;
   text-decoration: line-through;
 }
-.time-slot.selected {
-  background: var(--primary-color);
+.time-slot-btn.is-selected {
+  background: #7f56d9;
   color: white;
-  border-color: var(--primary-color);
+  border-color: #7f56d9;
 }
-
-.book-btn {
+.booking-summary {
+  background: #f9f5ff;
+  padding: 16px;
+  border-radius: 8px;
+  margin-bottom: 16px;
+  font-size: 14px;
+}
+.total-price {
+  color: #7f56d9;
+  font-size: 20px;
+}
+.balance-text {
+  font-size: 13px;
+  margin-top: 4px;
+  color: #667085;
+}
+.no-balance {
+  color: #ef4444;
+  font-weight: 600;
+}
+.confirm-btn {
   width: 100%;
-  padding: 12px;
-  border: none;
-  border-radius: 6px;
-  background: var(--primary-color);
+  padding: 14px;
+  background: linear-gradient(90deg, #7f56d9 0%, #6366f1 100%);
   color: white;
-  font-size: 16px;
+  border: none;
+  border-radius: 8px;
+  font-weight: 600;
   cursor: pointer;
-  text-align: center;
-  text-decoration: none;
 }
-.book-btn:disabled {
-  background: #cbd5e1;
+.confirm-btn:disabled {
+  opacity: 0.6;
   cursor: not-allowed;
 }
-
-.error-text {
-  color: #ef4444;
+.message {
+  margin-top: 12px;
+  text-align: center;
+  font-size: 14px;
 }
-.success-text {
-  color: #22c55e;
+.message.success {
+  color: #16a34a;
+}
+.message.error {
+  color: #dc2626;
+}
+@media (max-width: 768px) {
+  .main-grid {
+    grid-template-columns: 1fr;
+  }
 }
 </style>
