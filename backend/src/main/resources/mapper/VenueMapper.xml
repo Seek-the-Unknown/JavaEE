@@ -1,0 +1,61 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<!-- namespace 必须指向对应的Mapper接口的完整路径 -->
+<mapper namespace="com.mapper.VenueMapper">
+
+    <!--
+        select标签用于查询
+        id: 必须与接口中的方法名一致
+        resultType: 返回结果的类型，这里是Venue实体类的完整路径
+        parameterType: 传入参数的类型 (可选，MyBatis通常能自动推断)
+    -->
+    <select id="findById" resultType="com.entity.Venue">
+        SELECT * FROM t_venue WHERE id = #{id}
+    </select>
+
+    <select id="findAll" resultType="com.entity.Venue">
+        SELECT * FROM t_venue
+        <!-- 使用 where 标签，MyBatis会自动处理 AND -->
+        <where>
+            <!-- 如果 name 参数不为 null 且不为空字符串 -->
+            <if test="name != null and name != ''">
+                <!-- 则添加模糊查询条件 -->
+                name LIKE CONCAT('%', #{name}, '%')
+            </if>
+        </where>
+        ORDER BY create_time DESC
+    </select>
+
+    <!--
+        insert标签用于插入
+        useGeneratedKeys="true" keyProperty="id": 表示插入后将数据库自增的主键ID赋值给传入的venue对象的id属性
+    -->
+    <insert id="insert" useGeneratedKeys="true" keyProperty="id">
+        INSERT INTO t_venue (name, type, description, capacity, price_per_hour, image_url, is_active)
+        VALUES (#{name}, #{type}, #{description}, #{capacity}, #{pricePerHour}, #{imageUrl}, #{isActive})
+    </insert>
+
+    <!-- update标签用于更新 -->
+    <update id="update">
+        UPDATE t_venue
+        SET
+            name = #{name},
+            type = #{type},
+            description = #{description},
+            capacity = #{capacity},
+            price_per_hour = #{pricePerHour},
+            image_url = #{imageUrl},
+            is_active = #{isActive}
+        WHERE
+            id = #{id}
+    </update>
+
+    <!-- delete标签用于删除 -->
+    <delete id="deleteById">
+        DELETE FROM t_venue WHERE id = #{id}
+    </delete>
+
+</mapper>

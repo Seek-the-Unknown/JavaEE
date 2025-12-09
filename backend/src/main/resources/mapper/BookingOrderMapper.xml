@@ -1,0 +1,59 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.mapper.BookingOrderMapper">
+
+    <insert id="insert" useGeneratedKeys="true" keyProperty="id">
+        INSERT INTO t_booking_order (user_id, venue_id, booking_date, start_time, end_time, total_amount, status)
+        VALUES (#{userId}, #{venueId}, #{bookingDate}, #{startTime}, #{endTime}, #{totalAmount}, #{status})
+    </insert>
+
+    <!-- 只保留这一个带有 JOIN 的版本 -->
+    <select id="findByUserId" resultType="com.entity.BookingOrder">
+        SELECT
+            bo.*,
+            v.name AS venueName,
+            v.image_url AS venueImageUrl
+        FROM
+            t_booking_order bo
+                LEFT JOIN
+            t_venue v ON bo.venue_id = v.id
+        WHERE
+            bo.user_id = #{userId}
+        ORDER BY
+            bo.create_time DESC
+    </select>
+
+    <select id="findById" resultType="com.entity.BookingOrder">
+        SELECT * FROM t_booking_order WHERE id = #{id}
+    </select>
+
+    <select id="countOverlappingBookings" resultType="int">
+        SELECT COUNT(*)
+        FROM t_booking_order
+        WHERE
+        venue_id = #{venueId}
+        AND booking_date = #{bookingDate}
+        AND status = 1 <!-- 只检查已成功的预约 -->
+        AND #{startTime} &lt; end_time
+        AND #{endTime} &gt; start_time
+    </select>
+
+    <select id="findBookingsByVenueAndDate" resultType="com.entity.BookingOrder">
+        SELECT *
+        FROM t_booking_order
+        WHERE
+            venue_id = #{venueId}
+          AND booking_date = #{bookingDate}
+          AND status = 1
+    </select>
+
+    <!-- 加上 userId 是为了安全，确保用户只能取消自己的订单 -->
+    <update id="updateStatus">
+        UPDATE t_booking_order
+        SET status = #{status}
+        WHERE id = #{orderId} AND user_id = #{userId}
+    </update>
+
+</mapper>
