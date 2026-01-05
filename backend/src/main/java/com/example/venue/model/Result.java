@@ -1,10 +1,10 @@
-package com.example.venue.controller;
+package com.example.venue.model;
 
 import lombok.Data;
 
 // 辅助类
 @Data
-class Result {
+public class Result {
     private int code;
     private String msg;
     private Object data;

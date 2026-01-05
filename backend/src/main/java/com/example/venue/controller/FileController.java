@@ -1,5 +1,6 @@
 package com.example.venue.controller;
 
+import com.example.venue.model.Result;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 import java.io.File;

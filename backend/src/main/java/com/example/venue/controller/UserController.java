@@ -2,7 +2,7 @@ package com.example.venue.controller;
 
 import com.example.venue.model.User;
 import com.example.venue.service.UserService;
-import com.example.venue.controller.Result; // 假设 Result 和 Controller 在同包，或者自己 import
+import com.example.venue.model.Result; // 假设 Result 和 Controller 在同包，或者自己 import
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.web.bind.annotation.*;

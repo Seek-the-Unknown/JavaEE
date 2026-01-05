@@ -130,6 +130,9 @@ const handleLogin = async () => {
           localStorage.setItem('token', token)
           localStorage.setItem('user', JSON.stringify(user))
 
+          // ★★★ 新增代码：派发事件，通知 App.vue 更新导航栏 ★★★
+          window.dispatchEvent(new Event('login-success'))
+
           setTimeout(() => {
             if (user.role === 'admin') {
               router.push('/admin')

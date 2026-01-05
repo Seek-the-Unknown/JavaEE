@@ -1,6 +1,7 @@
 package com.example.venue.controller;
 
 import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
+import com.example.venue.model.Result;
 import com.example.venue.model.User; //
 import com.example.venue.model.Venue; //
 import com.example.venue.service.UserService; //

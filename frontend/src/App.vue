@@ -62,23 +62,77 @@
   </el-container>
 </template>
 
+<!--<script setup>-->
+<!--import { ref } from 'vue'-->
+<!--import { useRouter } from 'vue-router'-->
+<!--import { Setting, Trophy, CaretBottom, SwitchButton } from '@element-plus/icons-vue'-->
+
+<!--const router = useRouter()-->
+<!--const user = ref(null)-->
+<!--try {-->
+<!--  const storedUser = localStorage.getItem('user')-->
+<!--  if (storedUser) user.value = JSON.parse(storedUser)-->
+<!--} catch (e) {-->
+<!--  console.error('User parse error', e)-->
+<!--}-->
+
+<!--const logout = () => {-->
+<!--  localStorage.removeItem('user')-->
+<!--  window.location.href = '/login'-->
+<!--}-->
+<!--</script>-->
+
 <script setup>
-import { ref } from 'vue'
+import { ref, onMounted, onUnmounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { Setting, Trophy, CaretBottom, SwitchButton } from '@element-plus/icons-vue'
 
 const router = useRouter()
 const user = ref(null)
-try {
-  const storedUser = localStorage.getItem('user')
-  if (storedUser) user.value = JSON.parse(storedUser)
-} catch (e) {
-  console.error('User parse error', e)
+
+// --- 核心逻辑 1：定义一个读取用户信息的函数 ---
+const refreshUser = () => {
+  try {
+    const storedUser = localStorage.getItem('user')
+    if (storedUser) {
+      user.value = JSON.parse(storedUser)
+    } else {
+      user.value = null // 如果本地没有数据，确保内存状态也是空的
+    }
+  } catch (e) {
+    console.error('User parse error', e)
+    user.value = null
+  }
 }
 
+// --- 核心逻辑 2：监听登录成功事件 (来自 Login.vue) ---
+const handleLoginSuccess = () => {
+  refreshUser()
+}
+
+// 组件挂载时：读取一次数据，并开始监听登录事件
+onMounted(() => {
+  refreshUser()
+  window.addEventListener('login-success', handleLoginSuccess)
+})
+
+// 组件卸载时：移除监听
+onUnmounted(() => {
+  window.removeEventListener('login-success', handleLoginSuccess)
+})
+
+// --- 核心逻辑 3：退出登录 ---
 const logout = () => {
+  // 1. 清除硬盘数据 (Local Storage)
   localStorage.removeItem('user')
-  window.location.href = '/login'
+  localStorage.removeItem('token')
+
+  // 2. ★★★ 关键修复：手动清空内存数据 (响应式变量) ★★★
+  // 这一步会让导航栏立刻从 "头像" 变成 "登录按钮"
+  user.value = null
+
+  // 3. 跳转回登录页 (页面不刷新)
+  router.push('/login')
 }
 </script>
 
