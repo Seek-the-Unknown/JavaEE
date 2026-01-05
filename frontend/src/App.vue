@@ -31,6 +31,12 @@
                   <el-dropdown-item v-if="user.role === 'admin'" @click="$router.push('/admin')" class="admin-item">
                     <el-icon><Setting /></el-icon> 系统管理
                   </el-dropdown-item>
+
+                    <el-dropdown-item v-if="user.role === 'USER'" @click="$router.push('/profile')" class = "admin-item">
+                      <el-icon><Odometer /></el-icon>个人中心
+                    </el-dropdown-item>
+
+
                   <el-dropdown-item divided @click="logout">
                     <el-icon><SwitchButton /></el-icon> 退出登录
                   </el-dropdown-item>
@@ -220,3 +226,4 @@ const logout = () => {
   font-weight: 500;
 }
 </style>
+

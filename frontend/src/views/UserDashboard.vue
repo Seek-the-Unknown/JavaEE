@@ -29,14 +29,14 @@
             <span>我发布的场馆</span>
           </div>
 
-          <div
-              class="nav-item"
-              :class="{ active: currentView === 'my-bookings' }"
-              @click="switchView('my-bookings')"
-          >
-            <el-icon><Calendar /></el-icon>
-            <span>我的预约记录</span>
-          </div>
+<!--          <div-->
+<!--              class="nav-item"-->
+<!--              :class="{ active: currentView === 'my-bookings' }"-->
+<!--              @click="switchView('my-bookings')"-->
+<!--          >-->
+<!--            <el-icon><Calendar /></el-icon>-->
+<!--            <span>我的预约记录</span>-->
+<!--          </div>-->
         </div>
 
         <div class="sidebar-footer">

@@ -7,7 +7,8 @@ import MyBooking from '../views/MyBooking.vue'
 import UserProfile from '../views/UserDashboard.vue'
 import VenueDetail from '../views/VenueDetail.vue'
 import MyVenues from '../views/MyVenues.vue'
-import AdminDashboard from '../views/AdminDashboard.vue' // 1. 引入
+import AdminDashboard from '../views/AdminDashboard.vue'
+import UserDashboard from "@/views/UserDashboard.vue"; // 1. 引入
 
 const routes = [
     { path: '/', name: 'Home', component: Home },
@@ -15,7 +16,8 @@ const routes = [
     { path: '/register', name: 'Register', component: Register },
     { path: '/add', name: 'VenueAdd', component: VenueAdd },
     { path: '/my-bookings', name: 'MyBooking', component: MyBooking },
-    { path: '/profile', name: 'UserProfile', component: UserProfile },
+    //{ path: '/profile', name: 'UserProfile', component: UserProfile },
+    { path: '/profile', name: 'UserDashboard', component: UserDashboard },
     { path: '/venue/:id', name: 'VenueDetail', component: VenueDetail },
     { path: '/my-venues', name: 'MyVenues', component: MyVenues },
     // 2. 新增管理员路由
