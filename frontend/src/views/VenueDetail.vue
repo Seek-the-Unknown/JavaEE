@@ -19,7 +19,7 @@
               {{ owner?.username?.charAt(0).toUpperCase() }}
             </el-avatar>
             <div class="text-info">
-              <div class="name">{{ owner?.username }}</div>
+              <div class="name">{{ owner?.username || '未知用户' }}</div>
               <el-tag size="small" type="info">已认证房东</el-tag>
             </div>
           </div>
@@ -48,7 +48,6 @@
         <p class="desc">{{ venue.description || '暂无详细描述' }}</p>
 
         <div class="action-box">
-
           <div class="picker-row">
             <span class="label">预约日期:</span>
             <el-date-picker
@@ -112,7 +111,6 @@ import { ref, onMounted, computed } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import axios from 'axios'
 import { ElMessage, ElMessageBox } from 'element-plus'
-// ★★★ 记得引入 Location 图标 ★★★
 import { User, Timer, Location } from '@element-plus/icons-vue'
 
 const route = useRoute()
@@ -161,13 +159,14 @@ const loadDetail = async () => {
   }
 }
 
-const combineDateTime = (dateObj, timeStr) => {
-  const d = new Date(dateObj)
-  const [hours, minutes] = timeStr.split(':')
-  d.setHours(hours)
-  d.setMinutes(minutes)
-  d.setSeconds(0)
-  return d
+// ★★★ 核心修复：手动格式化时间为 "yyyy-MM-dd HH:mm:ss" ★★★
+// 解决后端 jackson 解析报错的问题
+const formatDateStr = (dateObj, timeStr) => {
+  const y = dateObj.getFullYear()
+  const m = (dateObj.getMonth() + 1).toString().padStart(2, '0')
+  const d = dateObj.getDate().toString().padStart(2, '0')
+  // 拼接成 "2023-10-25 14:00:00"
+  return `${y}-${m}-${d} ${timeStr}:00`
 }
 
 const handleBook = async () => {
@@ -185,22 +184,21 @@ const handleBook = async () => {
         { confirmButtonText: '确认支付', cancelButtonText: '取消', type: 'warning' }
     )
 
-    const finalStart = combineDateTime(selectedDate.value, startTimeStr.value)
-    const finalEnd = combineDateTime(selectedDate.value, endTimeStr.value)
+    // 使用修复后的格式化函数
+    const finalStart = formatDateStr(selectedDate.value, startTimeStr.value)
+    const finalEnd = formatDateStr(selectedDate.value, endTimeStr.value)
 
     const res = await axios.post('http://localhost:8888/api/booking/create', {
       venueId: venue.value.id,
-      startTime: finalStart,
-      endTime: finalEnd
+      totalCost: totalPrice.value, // 最好把钱也传给后端校验
+      startTime: finalStart, // 字符串格式
+      endTime: finalEnd      // 字符串格式
     })
 
     if (res.data.code === 200) {
       ElMessage.success('预约成功！')
-      const userRes = await axios.get(`http://localhost:8888/api/user/${currentUser.id}`)
-      if(userRes.data.code === 200) {
-        localStorage.setItem('user', JSON.stringify(userRes.data.data))
-        window.location.href = '/my-bookings'
-      }
+      // 跳转到“我的订单”页
+      router.push('/my-bookings')
     } else {
       ElMessage.error(res.data.msg || '预约失败')
     }
@@ -208,7 +206,7 @@ const handleBook = async () => {
   } catch (e) {
     if(e !== 'cancel') {
       console.error(e)
-      ElMessage.error(e.response?.data?.msg || '请求出错')
+      ElMessage.error(e.response?.data?.msg || '操作错误')
     }
   }
 }

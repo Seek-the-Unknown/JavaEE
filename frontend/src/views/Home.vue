@@ -113,6 +113,11 @@
           <el-input-number v-model="bookHours" :min="1" :max="12" size="large" style="width: 100%" />
         </div>
 
+        <div class="form-item" style="text-align: right; margin-top: -10px;">
+          <span style="font-size: 14px; color: #666;">预计总价：</span>
+          <span style="font-size: 18px; color: #f56c6c; font-weight: bold;">¥ {{ (currentItem?.price * bookHours).toFixed(2) }}</span>
+        </div>
+
         <div class="booking-tips">
           <el-icon><InfoFilled /></el-icon>
           <span>当前为快速预约模式 (从当前时间开始计算)</span>
@@ -133,7 +138,7 @@ import { ref, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import axios from 'axios'
 import { ElMessage } from 'element-plus'
-import { Search, Location, InfoFilled } from '@element-plus/icons-vue' // 引入需要的图标
+import { Search, Location, InfoFilled } from '@element-plus/icons-vue'
 import { pcaTextArr } from 'element-china-area-data'
 
 const router = useRouter()
@@ -170,35 +175,70 @@ const loadData = async () => {
     if(searchRegionStr.value) params.region = searchRegionStr.value
 
     const res = await axios.get('http://localhost:8888/api/venues', { params })
-    list.value = res.data.data
+    if (res.data.code === 200) {
+      list.value = res.data.data
+    }
   } catch (e) {
     ElMessage.error('加载失败')
   }
 }
 
 const goToDetail = (id) => { router.push(`/venue/${id}`) }
+
 const openBook = (item) => {
-  if(!user) return router.push('/login')
+  // 检查登录状态
+  const token = localStorage.getItem('token')
+  if(!token) {
+    ElMessage.warning('请先登录')
+    return router.push('/login')
+  }
+
   currentItem.value = item
   bookHours.value = 2
   dialogVisible.value = true
 }
 
+// ★★★ 核心修复：日期格式化工具函数 ★★★
+const formatDate = (date) => {
+  const y = date.getFullYear()
+  const m = String(date.getMonth() + 1).padStart(2, '0')
+  const d = String(date.getDate()).padStart(2, '0')
+  const h = String(date.getHours()).padStart(2, '0')
+  const min = String(date.getMinutes()).padStart(2, '0')
+  const s = String(date.getSeconds()).padStart(2, '0')
+  return `${y}-${m}-${d} ${h}:${min}:${s}`
+}
+
 const submitQuickBook = async () => {
   try {
-    const start = new Date()
-    const end = new Date(start.getTime() + bookHours.value * 60 * 60 * 1000)
-    await axios.post('http://localhost:8888/api/booking/create', {
+    const startObj = new Date()
+    const endObj = new Date(startObj.getTime() + bookHours.value * 60 * 60 * 1000)
+
+    // 1. 转换格式为 "yyyy-MM-dd HH:mm:ss"
+    const startStr = formatDate(startObj)
+    const endStr = formatDate(endObj)
+
+    // 2. 计算总价
+    const totalCost = currentItem.value.price * bookHours.value
+
+    // 3. 发送请求
+    const res = await axios.post('http://localhost:8888/api/booking/create', {
       venueId: currentItem.value.id,
-      startTime: start,
-      endTime: end
+      startTime: startStr,  // 修复点：发送字符串而非对象
+      endTime: endStr,      // 修复点：发送字符串而非对象
+      totalCost: totalCost
     })
 
-    ElMessage.success('预约成功')
-    dialogVisible.value = false
-    router.push('/my-bookings')
+    if (res.data.code === 200) {
+      ElMessage.success('预约成功')
+      dialogVisible.value = false
+      router.push('my-bookings') // 注意路由路径是 my-booking 还是 my-bookings，需与 router/index.js 一致
+    } else {
+      ElMessage.error(res.data.msg || '预约失败')
+    }
   } catch (e) {
-    ElMessage.error(e.response?.data?.msg || '预约失败')
+    console.error(e)
+    ElMessage.error(e.response?.data?.msg || '系统错误')
   }
 }
 
@@ -209,7 +249,7 @@ onMounted(loadData)
 /* 1. 全局背景与容器 */
 .page-bg {
   min-height: 100vh;
-  background-color: #f5f7fa; /* 浅灰底色，突显卡片 */
+  background-color: #f5f7fa;
   padding-bottom: 40px;
 }
 .home-container {
@@ -218,7 +258,7 @@ onMounted(loadData)
   padding: 20px;
 }
 
-/* 2. 筛选区域 - 类似现代App的控制台 */
+/* 2. 筛选区域 */
 .filter-section {
   background: #ffffff;
   border-radius: 16px;
@@ -258,7 +298,6 @@ onMounted(loadData)
   max-width: 500px;
 }
 
-/* 自定义搜索框样式 */
 .custom-search-input :deep(.el-input__wrapper) {
   border-radius: 8px 0 0 8px;
   box-shadow: 0 0 0 1px #dcdfe6 inset;
@@ -280,7 +319,6 @@ onMounted(loadData)
   gap: 16px;
 }
 
-/* 胶囊式标签选择器 */
 .type-tags {
   display: flex;
   flex-wrap: wrap;
@@ -332,7 +370,7 @@ onMounted(loadData)
   vertical-align: middle;
 }
 
-/* 4. 场馆卡片 (核心视觉优化) */
+/* 4. 场馆卡片 */
 .venue-card {
   background: #fff;
   border-radius: 12px;
@@ -343,7 +381,7 @@ onMounted(loadData)
   border: 1px solid transparent;
   display: flex;
   flex-direction: column;
-  height: 100%; /* 保证高度一致 */
+  height: 100%;
 }
 
 .venue-card:hover {
@@ -366,10 +404,9 @@ onMounted(loadData)
 }
 
 .venue-card:hover .cover-img {
-  transform: scale(1.05); /* 悬停微缩放 */
+  transform: scale(1.05);
 }
 
-/* 卡片上的徽标 */
 .card-badges {
   position: absolute;
   top: 10px;
@@ -400,7 +437,7 @@ onMounted(loadData)
   padding: 16px;
   display: flex;
   flex-direction: column;
-  flex: 1; /* 撑满剩余高度 */
+  flex: 1;
 }
 
 .card-main {
@@ -438,7 +475,7 @@ onMounted(loadData)
   color: #8f959e;
   line-height: 1.5;
   margin: 0 0 16px 0;
-  height: 40px; /* 固定两行高度 */
+  height: 40px;
   overflow: hidden;
   text-overflow: ellipsis;
   display: -webkit-box;
@@ -447,7 +484,7 @@ onMounted(loadData)
 }
 
 .card-footer {
-  margin-top: auto; /* 将按钮推到底部 */
+  margin-top: auto;
 }
 
 .book-btn {
@@ -486,7 +523,6 @@ onMounted(loadData)
   font-size: 12px;
 }
 
-/* 响应式适配 */
 @media (max-width: 768px) {
   .search-row { flex-direction: column; align-items: stretch; }
   .region-select, .search-box { width: 100%; max-width: none; }

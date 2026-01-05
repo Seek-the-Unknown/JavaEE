@@ -13,25 +13,27 @@ public class WebConfig implements WebMvcConfigurer {
     @Autowired
     private StringRedisTemplate redisTemplate;
 
-    // 1. 配置静态资源映射 (保持你原来的代码)
-    @Override
-    public void addResourceHandlers(ResourceHandlerRegistry registry) {
-        registry.addResourceHandler("/images/**")
-                .addResourceLocations("file:F:/venue_images/");
-    }
-
-    // 2. ★★★ 配置拦截器
+    // 1. 注册拦截器：解析 Token 并注入 userId
     @Override
     public void addInterceptors(InterceptorRegistry registry) {
         registry.addInterceptor(new LoginInterceptor(redisTemplate))
-                .addPathPatterns("/**") // 拦截所有路径
+                .addPathPatterns("/**") // 拦截所有接口
                 .excludePathPatterns(   // 排除不需要登录的接口
-                        "/api/user/login",      // 登录
-                        "/api/user/register",   // 注册
-                        "/api/venues",          // 场馆列表(公开)
-                        "/api/venue/{id}",      // 场馆详情(公开)
-                        "/images/**",           // 图片资源
-                        "/api/file/**"          // 文件上传(如果需要公开的话)
+                        "/api/user/login",
+                        "/api/user/register",
+                        "/api/venues",      // 场馆列表
+                        "/api/file/upload", // 图片上传
+                        "/images/**"        // 图片资源
                 );
+    }
+
+    // 2. 配置静态资源映射 (图片保存路径)
+    @Override
+    public void addResourceHandlers(ResourceHandlerRegistry registry) {
+        // 请确保这里的路径是你电脑上实际存储图片的路径
+        // 如果是 Windows，格式如 "file:D:/venue_images/"
+        // 如果是 Mac/Linux，格式如 "file:/Users/xxx/venue_images/"
+        registry.addResourceHandler("/images/**")
+                .addResourceLocations("file:F:/venue_images/");
     }
 }
