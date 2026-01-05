@@ -4,7 +4,7 @@ import Login from '../views/Login.vue'
 import Register from '../views/Register.vue'
 import VenueAdd from '../views/VenueAdd.vue'
 import MyBooking from '../views/MyBooking.vue'
-import UserProfile from '../views/UserProfile.vue'
+import UserProfile from '../views/UserDashboard.vue'
 import VenueDetail from '../views/VenueDetail.vue'
 import MyVenues from '../views/MyVenues.vue'
 import AdminDashboard from '../views/AdminDashboard.vue' // 1. 引入
